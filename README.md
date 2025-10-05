@@ -161,8 +161,10 @@ await runtime.tools.call("search", { query: "MCP 页面协议" });
 ```bash
 npm install
 npm run build
+npm run test
 ```
 
 * `npm run check` 仅执行类型检查（不输出编译结果）；
+* `npm run test` 使用 Vitest 执行单元/集成测试并输出覆盖率；
 * 构建产物输出至 `dist/`，包含 ESM 与类型声明文件；
 * `src/index.ts` 暴露 `createMcpRuntime` 与全部类型定义。
