@@ -26,9 +26,12 @@
 3. **MCP 发现流程**
    - Inline 描述符注册与去重。
    - 远程仓库响应归一化（含签名可选）。
-4. **Prompt 管理**
+4. **MCP Store 集合**
+   - 集合分页、查询过滤组合逻辑。
+   - 集合概览/完整 MCP 描述符返回。
+5. **Prompt 管理**
    - 模板变量替换与 Schema 校验。
-5. **Schema 工具函数**
+6. **Schema 工具函数**
    - `validateAgainstSchema` 对常见类型的通过/失败路径。
 
 ---

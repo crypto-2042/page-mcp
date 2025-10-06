@@ -1,15 +1,17 @@
 import {
   AuditManager,
   Clock,
-  FetchLike,
   CreateMcpRuntimeOptions,
+  FetchLike,
   McpDescriptor,
   McpResource,
   McpRuntime,
+  McpStoreClient,
   McpTool,
   PreparedPrompt,
   RegistryClient,
   RemoteRegistryConfig,
+  RemoteStoreConfig,
   ResourceReadOptions,
   ResourceResolver,
   ResourceSubscription,
@@ -23,6 +25,7 @@ import { ToolManager } from "./managers/tool-manager";
 import { PromptManager } from "./managers/prompt-manager";
 import { AuditManagerImpl } from "./managers/audit-manager";
 import { RemoteRegistryClientImpl } from "./remote/registry-client";
+import { RemoteStoreClientImpl } from "./remote/store-client";
 
 export function createMcpRuntime(options: CreateMcpRuntimeOptions = {}): McpRuntime {
   const locale = options.locale ?? (typeof navigator !== "undefined" ? navigator.language : "zh-CN");
@@ -30,7 +33,8 @@ export function createMcpRuntime(options: CreateMcpRuntimeOptions = {}): McpRunt
   const fetcher = options.fetcher ?? (typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined);
   const clock: Clock = options.clock ?? new SystemClock();
   const resourceResolvers: ResourceResolver[] = options.resourceResolvers ?? [new DomResourceResolver()];
-  const registryClient = buildRegistryClient(options.remote, fetcher);
+  const storeClient = buildStoreClient(options.store, fetcher);
+  const registryClient = buildRegistryClient(options.remote, fetcher, storeClient);
 
   const mcpManager = new McpManager({
     fetcher,
@@ -64,7 +68,8 @@ export function createMcpRuntime(options: CreateMcpRuntimeOptions = {}): McpRunt
     toolManager,
     promptManager,
     audit,
-    permissions
+    permissions,
+    storeClient
   );
 }
 
@@ -76,7 +81,8 @@ class McpRuntimeImpl implements McpRuntime {
     private readonly toolManager: ToolManager,
     private readonly promptManager: PromptManager,
     public readonly audit: AuditManager,
-    public readonly permissions: PermissionsManagerImpl
+    public readonly permissions: PermissionsManagerImpl,
+    public readonly store: McpStoreClient | undefined
   ) {}
 
   descriptors(): ResolvedDescriptor[] {
@@ -125,9 +131,20 @@ class SystemClock implements Clock {
   }
 }
 
-function buildRegistryClient(remote: RemoteRegistryConfig | undefined, fetcher?: FetchLike): RegistryClient | undefined {
+function buildRegistryClient(
+  remote: RemoteRegistryConfig | undefined,
+  fetcher: FetchLike | undefined,
+  storeClient: McpStoreClient | undefined
+): RegistryClient | undefined {
   if (!remote) {
     return undefined;
   }
-  return new RemoteRegistryClientImpl(remote, fetcher);
+  return new RemoteRegistryClientImpl(remote, fetcher, storeClient);
+}
+
+function buildStoreClient(store: RemoteStoreConfig | undefined, fetcher?: FetchLike): McpStoreClient | undefined {
+  if (!store) {
+    return undefined;
+  }
+  return new RemoteStoreClientImpl(store, fetcher);
 }

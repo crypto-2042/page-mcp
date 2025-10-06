@@ -1,10 +1,12 @@
 import {
   FetchLike,
   McpDescriptor,
+  McpStoreClient,
   RegistryClient,
   RemoteRegistryConfig,
   ResolvedDescriptor,
 } from "../types";
+import { base64ToArrayBuffer, isDescriptor, resolveFetch } from "./common";
 
 interface RegistryResponseItem {
   descriptor: McpDescriptor;
@@ -16,13 +18,26 @@ interface RegistryResponse {
 }
 
 export class RemoteRegistryClientImpl implements RegistryClient {
-  constructor(private readonly config: RemoteRegistryConfig, private readonly fetcher?: FetchLike) {}
+  constructor(
+    private readonly config: RemoteRegistryConfig,
+    private readonly fetcher?: FetchLike,
+    private readonly storeClient?: McpStoreClient
+  ) {}
 
   async discover(): Promise<ResolvedDescriptor[]> {
-    if (!this.fetcher) {
+    if (this.config.collectionId) {
+      return this.discoverFromStore();
+    }
+    let fetcher;
+    try {
+      fetcher = resolveFetch(this.fetcher);
+    } catch {
       return [];
     }
-    const response = await this.fetcher(this.config.registryUrl, { credentials: "include" });
+    if (!this.config.registryUrl) {
+      throw new Error("Remote registry URL not configured");
+    }
+    const response = await fetcher(this.config.registryUrl, { credentials: "include" });
     if (!response.ok) {
       throw new Error(`Failed to fetch remote descriptors: ${response.status}`);
     }
@@ -30,7 +45,7 @@ export class RemoteRegistryClientImpl implements RegistryClient {
     const items = normalizeResponse(payload);
     const accepted: ResolvedDescriptor[] = [];
     for (const item of items) {
-      if (this.config.verifySignatures === false || !item.signature) {
+      if (!this.config.verifySignatures || !item.signature || !this.config.publicKey) {
         accepted.push({ descriptor: item.descriptor, source: "remote", origin: this.config.registryUrl });
         continue;
       }
@@ -40,6 +55,18 @@ export class RemoteRegistryClientImpl implements RegistryClient {
       }
     }
     return accepted;
+  }
+
+  private async discoverFromStore(): Promise<ResolvedDescriptor[]> {
+    if (!this.storeClient) {
+      throw new Error("Store client not configured for remote registry discovery");
+    }
+    const descriptors = await this.storeClient.getCollectionDescriptors(this.config.collectionId!);
+    return descriptors.map((descriptor) => ({
+      descriptor,
+      source: "remote",
+      origin: `store:${this.config.collectionId}`,
+    }));
   }
 }
 
@@ -59,14 +86,6 @@ function normalizeResponse(payload: unknown): RegistryResponseItem[] {
   return [];
 }
 
-function isDescriptor(input: unknown): input is McpDescriptor {
-  if (!input || typeof input !== "object") {
-    return false;
-  }
-  const candidate = input as McpDescriptor;
-  return typeof candidate.version === "string" && typeof candidate.api === "string";
-}
-
 async function verifyEd25519Signature(descriptor: McpDescriptor, signatureBase64: string, publicKeyBase64: string): Promise<boolean> {
   if (typeof crypto === "undefined" || !crypto.subtle) {
     throw new Error("WebCrypto API not available for signature verification");
@@ -82,29 +101,4 @@ async function verifyEd25519Signature(descriptor: McpDescriptor, signatureBase64
     console.error("Failed to verify signature", error);
     return false;
   }
-}
-
-function base64ToArrayBuffer(value: string): ArrayBuffer {
-  if (typeof atob === "function") {
-    const binary = atob(value);
-    const buffer = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      buffer[i] = binary.charCodeAt(i);
-    }
-    return buffer.buffer;
-  }
-  const nodeBuffer = (globalThis as { Buffer?: BufferLike }).Buffer;
-  if (nodeBuffer) {
-    const binary = nodeBuffer.from(value, "base64");
-    return binary.buffer.slice(binary.byteOffset, binary.byteOffset + binary.byteLength);
-  }
-  throw new Error("No base64 decoder available in this environment");
-}
-
-interface BufferLike {
-  from(data: string, encoding: string): {
-    buffer: ArrayBuffer;
-    byteOffset: number;
-    byteLength: number;
-  };
 }

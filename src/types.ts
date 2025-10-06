@@ -80,6 +80,7 @@ export interface CreateMcpRuntimeOptions {
   sourcePreference?: McpSource[];
   inlineDescriptors?: McpDescriptor[];
   remote?: RemoteRegistryConfig;
+  store?: RemoteStoreConfig;
   fetcher?: FetchLike;
   consentProvider?: ConsentProvider;
   resourceResolvers?: ResourceResolver[];
@@ -89,10 +90,17 @@ export interface CreateMcpRuntimeOptions {
 }
 
 export interface RemoteRegistryConfig {
-  registryUrl: string;
-  publicKey: string;
+  registryUrl?: string;
+  publicKey?: string;
   wellKnownPath?: string;
   verifySignatures?: boolean;
+  collectionId?: string;
+}
+
+export interface RemoteStoreConfig {
+  baseUrl: string;
+  apiKey?: string;
+  defaultPageSize?: number;
 }
 
 export type FetchLike = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
@@ -209,6 +217,7 @@ export interface McpRuntime {
   };
   audit: AuditManager;
   permissions: PermissionsManager;
+  store: McpStoreClient | undefined;
 }
 
 export interface Clock {
@@ -217,4 +226,66 @@ export interface Clock {
 
 export interface RegistryClient {
   discover(): Promise<ResolvedDescriptor[]>;
+}
+
+export interface McpStoreClient {
+  listCollections(query?: CollectionQuery): Promise<CollectionPage<McpCollectionSummary>>;
+  getCollectionOverview(collectionId: string): Promise<McpCollectionOverview>;
+  getCollectionDescriptors(collectionId: string): Promise<McpDescriptor[]>;
+}
+
+export interface CollectionQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  publisher?: string;
+  site?: string;
+}
+
+export interface CollectionPage<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total?: number;
+  hasMore: boolean;
+}
+
+export interface McpCollectionSummary {
+  id: string;
+  name: string;
+  description?: string;
+  publisher: string;
+  bannerUrl?: string;
+  siteUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface McpCollectionOverview {
+  id: string;
+  name: string;
+  description?: string;
+  publisher: string;
+  bannerUrl?: string;
+  siteUrl?: string;
+  resources: CollectionResourceSummary[];
+  tools: CollectionToolSummary[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CollectionResourceSummary {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+export interface CollectionToolSummary {
+  name: string;
+  description?: string;
+  sideEffects?: "none" | "local" | "network";
+  inputType?: string;
+  outputType?: string;
 }

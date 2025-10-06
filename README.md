@@ -86,6 +86,26 @@ const consent = runtime.prompts.prepare("consent", {
 });
 ```
 
+### 4. 远程 MCP 集合（Store）
+
+```ts
+const runtime = createMcpRuntime({
+  store: {
+    baseUrl: "https://store.example.com/api/",
+    apiKey: "PUBLIC-OR-SIGNED-TOKEN"
+  }
+});
+
+if (runtime.store) {
+  const collections = await runtime.store.listCollections({ publisher: "example" });
+  const overview = await runtime.store.getCollectionOverview(collections.items[0]!.id);
+  const descriptors = await runtime.store.getCollectionDescriptors(collections.items[0]!.id);
+  for (const descriptor of descriptors) {
+    runtime.mcp.register(descriptor);
+  }
+}
+```
+
 ---
 
 ## 🔐 五、安全机制
@@ -105,7 +125,11 @@ const consent = runtime.prompts.prepare("consent", {
 // content-script.ts
 const runtime = createMcpRuntime({
   sourcePreference: ["inline", "remote"],
-  remote: { registryUrl: "https://mcp-store.io", publicKey: "..." }
+  remote: {
+    registryUrl: "https://mcp-store.io",
+    publicKey: "...",
+    collectionId: "store-collection-id" // 可选：直接从 MCP Store 获取集合
+  }
 });
 
 await runtime.mcp.discover();
@@ -136,23 +160,6 @@ await runtime.tools.call("search", { query: "MCP 页面协议" });
 * 强烈建议支持国际化 Prompts；
 * 调用链：**Plan → Consent → Act → Verify → Summarize**；
 * 在浏览器插件中集成用户授权弹窗。
-
----
-
-✅ **下一步**
-
-> 可扩展至：
->
-> * 远程 MCP 商店 API（签名验证）
-> * SDK TypeScript 类型定义 (`IMcpRuntime`, `McpResource`, `McpTool`, `McpPrompt`)
-> * Node/Service Worker 环境支持
-
----
-
-是否希望我为你继续生成：
-
-1. **远程 MCP 商店接口文档（API 设计 + 签名验证逻辑）**
-2. **SDK TypeScript 类型定义与模块结构图**？
 
 ---
 
