@@ -1,6 +1,6 @@
 # 🧰 页面 MCP SDK 开发文档
 
-**包名**：`@page-mcp/sdk`
+**包名**：`page-mcp-sdk`
 **目标**：为网页和浏览器插件提供统一接口以注册、发现与执行 MCP。
 
 ---
@@ -8,7 +8,7 @@
 ## 🚀 一、安装
 
 ```bash
-npm install @page-mcp/sdk
+npm install page-mcp-sdk
 # 或通过 CDN
 <script src="https://cdn.example.com/page-mcp-sdk/index.js"></script>
 ```
@@ -18,7 +18,7 @@ npm install @page-mcp/sdk
 ## ⚙️ 二、初始化
 
 ```ts
-import { createMcpRuntime } from "@page-mcp/sdk";
+import { createMcpRuntime } from "page-mcp-sdk";
 
 const runtime = createMcpRuntime({
   locale: "zh-CN",
