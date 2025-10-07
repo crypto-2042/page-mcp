@@ -95,6 +95,7 @@ export interface RemoteRegistryConfig {
   wellKnownPath?: string;
   verifySignatures?: boolean;
   collectionId?: string;
+  store?: RemoteStoreConfig;
 }
 
 export interface RemoteStoreConfig {

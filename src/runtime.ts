@@ -33,7 +33,8 @@ export function createMcpRuntime(options: CreateMcpRuntimeOptions = {}): McpRunt
   const fetcher = options.fetcher ?? (typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined);
   const clock: Clock = options.clock ?? new SystemClock();
   const resourceResolvers: ResourceResolver[] = options.resourceResolvers ?? [new DomResourceResolver()];
-  const storeClient = buildStoreClient(options.store, fetcher);
+  const storeConfig = options.store ?? options.remote?.store;
+  const storeClient = buildStoreClient(storeConfig, fetcher);
   const registryClient = buildRegistryClient(options.remote, fetcher, storeClient);
 
   const mcpManager = new McpManager({

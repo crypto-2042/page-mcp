@@ -44,4 +44,32 @@ describe("Runtime store integration", () => {
     const runtime = createMcpRuntime();
     expect(runtime.store).toBeUndefined();
   });
+
+  it("derives store client from remote configuration", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo) => {
+      const url = String(input);
+      if (url.includes("/collections")) {
+        return {
+          ok: true,
+          json: async () => storeResponse,
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => [],
+      } as Response;
+    });
+
+    const runtime = createMcpRuntime({
+      remote: {
+        collectionId: "col-1",
+        store: { baseUrl: "https://store.example", apiKey: "demo" },
+      },
+      fetcher,
+    });
+
+    expect(runtime.store).toBeDefined();
+    const page = await runtime.store!.listCollections();
+    expect(page.items[0]?.id).toBe("col-1");
+  });
 });
