@@ -31,12 +31,11 @@ const runtime = createMcpRuntime({
 ```
 
 ---
-
 ## 🎯 三、典型使用场景
 
 - 站点页面：使用 `runtime.mcp.register()` 或 `inlineDescriptors` 暴露本地 MCP。
 - 嵌入式 AI：依据 `sourcePreference` 发现页面 MCP，或通过 `remote.collectionId` / `store` 获取远程集合。
-- 浏览器插件：在内容脚本中初始化运行时，`discover()` 后使用 `resources` / `tools`，并可按域从 MCP Store 预加载集合。
+- 浏览器插件：在内容脚本中可调用 `createBrowserExtensionRuntime`，根据站点域名自动匹配集合配置；`discover()` 后使用 `resources` / `tools`。
 
 ---
 
@@ -131,13 +130,18 @@ if (runtime.store) {
 
 ```ts
 // content-script.ts
-const runtime = createMcpRuntime({
+const runtime = createBrowserExtensionRuntime({
   sourcePreference: ["inline", "remote"],
-  remote: {
-    registryUrl: "https://mcp-store.io",
-    publicKey: "...",
-    collectionId: "store-collection-id" // 可选：直接从 MCP Store 获取集合
-  }
+  mappings: [
+    {
+      match: /example\.com$/,
+      remote: {
+        collectionId: "store-collection-id",
+        store: { baseUrl: "https://mcp-store.io/api/" }
+      }
+    }
+  ],
+  defaultRemote: { wellKnownPath: "/.well-known/mcp.json" }
 });
 
 await runtime.mcp.discover();

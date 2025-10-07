@@ -1,6 +1,6 @@
 {
   "name": "page-mcp-sdk",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "TypeScript SDK for the Page Model Context Protocol (Page MCP).",
   "type": "module",
   "main": "./dist/index.js",

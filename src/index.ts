@@ -5,3 +5,4 @@ export { RemoteRegistryClientImpl } from "./remote/registry-client";
 export { PermissionsManagerImpl } from "./managers/permissions-manager";
 export { AuditManagerImpl } from "./managers/audit-manager";
 export { RemoteStoreClientImpl } from "./remote/store-client";
+export { createBrowserExtensionRuntime, BrowserExtensionRuntimeOptions, DomainMapping } from "./adapters/browser-extension";
