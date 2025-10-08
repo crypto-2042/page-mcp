@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
-import type { FetchLike, McpDescriptor, RegistryClient, ResolvedDescriptor } from "../src/types";
+import type {
+  FetchLike,
+  McpDescriptor,
+  McpStoreClient,
+  CollectionPage,
+  McpCollectionSummary,
+  McpCollectionOverview,
+} from "../src/types";
 import { McpManager } from "../src/managers/mcp-manager";
 
-class FakeRegistryClient implements RegistryClient {
-  constructor(private readonly descriptors: ResolvedDescriptor[]) {}
+class FakeStoreClient implements McpStoreClient {
+  constructor(private readonly descriptors: McpDescriptor[]) {}
 
-  async discover(): Promise<ResolvedDescriptor[]> {
+  async listCollections(): Promise<CollectionPage<McpCollectionSummary>> {
+    return { items: [], page: 1, pageSize: 1, hasMore: false };
+  }
+
+  async getCollectionOverview(): Promise<McpCollectionOverview> {
+    return {
+      id: "col-1",
+      name: "Test",
+      publisher: "demo",
+      resources: [],
+      tools: [],
+    };
+  }
+
+  async getCollectionDescriptors(collectionId: string): Promise<McpDescriptor[]> {
     return this.descriptors;
   }
 }
@@ -51,19 +72,20 @@ describe("McpManager", () => {
       return response as Response;
     };
 
-    const registry = new FakeRegistryClient([
-      { descriptor: remoteDescriptor, source: "remote", origin: "https://registry" },
-    ]);
+    const storeClient = new FakeStoreClient([remoteDescriptor]);
 
     const manager = new McpManager({
       fetcher,
       sourcePreference: ["inline", "wellKnown", "remote"],
       inlineDescriptors: [inlineDescriptor],
-      registryClient: registry,
+      mcpId: "col-1",
+      mcpStoreClient: storeClient,
       wellKnownPath: "https://site/.well-known/mcp.json",
     });
 
     const result = await manager.discover();
     expect(result.map((item) => item.source)).toEqual(["inline", "wellKnown", "remote"]);
+    const remote = result.find((item) => item.source === "remote");
+    expect(remote?.origin).toBe("store:col-1");
   });
 });

@@ -1,8 +1,6 @@
 import {
   CollectionPage,
   CollectionQuery,
-  CollectionResourceSummary,
-  CollectionToolSummary,
   FetchLike,
   McpCollectionOverview,
   McpCollectionSummary,
@@ -12,7 +10,7 @@ import {
 } from "../types";
 
 import { McpError } from "../utils/errors";
-import { createHeaders, isDescriptor, resolveFetch, setHeader } from "./common";
+import { createHeaders, resolveFetch, setHeader, isDescriptor } from "./common";
 
 export class RemoteStoreClientImpl implements McpStoreClient {
   constructor(private readonly config: RemoteStoreConfig, private readonly fetcher?: FetchLike) {}
@@ -28,25 +26,31 @@ export class RemoteStoreClientImpl implements McpStoreClient {
     const path = params.toString() ? `/collections?${params.toString()}` : "/collections";
     const response = await this.request(path);
     const payload = await response.json();
-    return normalizeCollectionPage(payload, query, this.config.defaultPageSize ?? 20);
+    return payload as CollectionPage<McpCollectionSummary>;
   }
 
   async getCollectionOverview(collectionId: string): Promise<McpCollectionOverview> {
     const response = await this.request(`/collections/${encodeURIComponent(collectionId)}/overview`);
     const payload = await response.json();
-    return normalizeCollectionOverview(payload);
+    return payload as McpCollectionOverview;
   }
 
   async getCollectionDescriptors(collectionId: string): Promise<McpDescriptor[]> {
-    const response = await this.request(`/collections/${encodeURIComponent(collectionId)}/descriptors`);
+    const response = await this.request(`/collections/${encodeURIComponent(collectionId)}/mcp`);
     const payload = await response.json();
-    if (Array.isArray(payload) && payload.every(isDescriptor)) {
-      return payload;
+    if (Array.isArray(payload)) {
+      return payload.filter(isDescriptor);
     }
-    if (isDescriptor(payload)) {
-      return [payload];
+    if (payload && typeof payload === "object") {
+      if (isDescriptor(payload)) {
+        return [payload];
+      }
+      const items = (payload as { items?: unknown[] }).items;
+      if (Array.isArray(items)) {
+        return items.filter(isDescriptor);
+      }
     }
-    throw new McpError("Unexpected payload for collection descriptors");
+    throw new McpError("Unexpected collection descriptor payload");
   }
 
   private async request(path: string): Promise<Response> {
@@ -62,105 +66,4 @@ export class RemoteStoreClientImpl implements McpStoreClient {
     }
     return response;
   }
-}
-
-function normalizeCollectionPage(
-  payload: unknown,
-  query: CollectionQuery,
-  defaultPageSize: number
-): CollectionPage<McpCollectionSummary> {
-  if (!payload || typeof payload !== "object") {
-    throw new McpError("Invalid collection page payload");
-  }
-  const itemsRaw = (payload as { items?: unknown }).items;
-  if (!Array.isArray(itemsRaw)) {
-    throw new McpError("Collection page missing items array");
-  }
-  const items = itemsRaw.filter(isCollectionSummary).map(mapCollectionSummary);
-  const page = numberOrDefault((payload as { page?: number }).page, query.page ?? 1);
-  const pageSize = numberOrDefault((payload as { pageSize?: number }).pageSize, query.pageSize ?? defaultPageSize);
-  const total = (payload as { total?: number }).total;
-  const hasMore = Boolean((payload as { hasMore?: boolean }).hasMore ?? (payload as { nextPage?: boolean }).nextPage);
-  return { items, page, pageSize, total, hasMore };
-}
-
-function normalizeCollectionOverview(payload: unknown): McpCollectionOverview {
-  if (!payload || typeof payload !== "object") {
-    throw new McpError("Invalid collection overview payload");
-  }
-  const summary = mapCollectionSummary(payload);
-  const resourcesRaw = (payload as { resources?: unknown }).resources;
-  const toolsRaw = (payload as { tools?: unknown }).tools;
-  const resources = Array.isArray(resourcesRaw)
-    ? resourcesRaw.filter(isResourceSummary).map(mapResourceSummary)
-    : [];
-  const tools = Array.isArray(toolsRaw) ? toolsRaw.filter(isToolSummary).map(mapToolSummary) : [];
-  return {
-    ...summary,
-    resources,
-    tools,
-    tags: Array.isArray((payload as { tags?: unknown }).tags)
-      ? ((payload as { tags: unknown[] }).tags as string[]).filter((item): item is string => typeof item === "string")
-      : undefined,
-  };
-}
-
-function isCollectionSummary(input: unknown): input is McpCollectionSummary {
-  if (!input || typeof input !== "object") {
-    return false;
-  }
-  return typeof (input as { id?: unknown }).id === "string" && typeof (input as { name?: unknown }).name === "string";
-}
-
-function mapCollectionSummary(input: unknown): McpCollectionSummary {
-  const summary = input as Partial<McpCollectionSummary>;
-  return {
-    id: summary.id ?? "",
-    name: summary.name ?? "",
-    description: summary.description,
-    publisher: summary.publisher ?? "unknown",
-    bannerUrl: summary.bannerUrl,
-    siteUrl: summary.siteUrl,
-    createdAt: summary.createdAt,
-    updatedAt: summary.updatedAt,
-  };
-}
-
-function isResourceSummary(input: unknown): input is { uri?: string; name?: string } {
-  if (!input || typeof input !== "object") {
-    return false;
-  }
-  return typeof (input as { uri?: unknown }).uri === "string" && typeof (input as { name?: unknown }).name === "string";
-}
-
-function mapResourceSummary(input: unknown): CollectionResourceSummary {
-  const resource = input as Partial<CollectionResourceSummary>;
-  return {
-    uri: resource.uri ?? "",
-    name: resource.name ?? "",
-    description: resource.description,
-    mimeType: resource.mimeType,
-  };
-}
-
-function isToolSummary(input: unknown): input is { name?: string } {
-  if (!input || typeof input !== "object") {
-    return false;
-  }
-  return typeof (input as { name?: unknown }).name === "string";
-}
-
-function mapToolSummary(input: unknown): CollectionToolSummary {
-  const tool = input as Partial<CollectionToolSummary>;
-  return {
-    name: tool.name ?? "",
-    description: tool.description,
-    sideEffects: tool.sideEffects,
-    inputType: tool.inputType,
-    outputType: tool.outputType,
-  };
-}
-
-function numberOrDefault(value: unknown, defaultValue: number): number {
-  return typeof value === "number" && !Number.isNaN(value) ? value : defaultValue;
 }

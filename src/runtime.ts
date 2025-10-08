@@ -9,8 +9,6 @@ import {
   McpStoreClient,
   McpTool,
   PreparedPrompt,
-  RegistryClient,
-  RemoteRegistryConfig,
   RemoteStoreConfig,
   ResourceReadOptions,
   ResourceResolver,
@@ -24,7 +22,6 @@ import { PermissionsManagerImpl } from "./managers/permissions-manager";
 import { ToolManager } from "./managers/tool-manager";
 import { PromptManager } from "./managers/prompt-manager";
 import { AuditManagerImpl } from "./managers/audit-manager";
-import { RemoteRegistryClientImpl } from "./remote/registry-client";
 import { RemoteStoreClientImpl } from "./remote/store-client";
 
 export function createMcpRuntime(options: CreateMcpRuntimeOptions = {}): McpRuntime {
@@ -33,16 +30,16 @@ export function createMcpRuntime(options: CreateMcpRuntimeOptions = {}): McpRunt
   const fetcher = options.fetcher ?? (typeof fetch !== "undefined" ? fetch.bind(globalThis) : undefined);
   const clock: Clock = options.clock ?? new SystemClock();
   const resourceResolvers: ResourceResolver[] = options.resourceResolvers ?? [new DomResourceResolver()];
-  const storeConfig = options.store ?? options.remote?.store;
-  const storeClient = buildStoreClient(storeConfig, fetcher);
-  const registryClient = buildRegistryClient(options.remote, fetcher, storeClient);
+  const storeConfig = options.store;
+  const storeClient = buildStoreClient(storeConfig);
 
   const mcpManager = new McpManager({
     fetcher,
     sourcePreference,
     inlineDescriptors: options.inlineDescriptors ?? [],
-    registryClient,
-    wellKnownPath: options.remote?.wellKnownPath,
+    wellKnownPath: options.wellKnownPath,
+    mcpId: options.collectionId,
+    mcpStoreClient: storeClient,
   });
 
   const permissions = new PermissionsManagerImpl();
@@ -130,17 +127,6 @@ class SystemClock implements Clock {
   now(): Date {
     return new Date();
   }
-}
-
-function buildRegistryClient(
-  remote: RemoteRegistryConfig | undefined,
-  fetcher: FetchLike | undefined,
-  storeClient: McpStoreClient | undefined
-): RegistryClient | undefined {
-  if (!remote) {
-    return undefined;
-  }
-  return new RemoteRegistryClientImpl(remote, fetcher, storeClient);
 }
 
 function buildStoreClient(store: RemoteStoreConfig | undefined, fetcher?: FetchLike): McpStoreClient | undefined {

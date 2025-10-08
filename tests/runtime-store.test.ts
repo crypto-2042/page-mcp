@@ -10,34 +10,35 @@ const storeResponse = {
 
 describe("Runtime store integration", () => {
   it("exposes store client when configured", async () => {
-    const fetcher = vi.fn(async (input: RequestInfo) => {
+    const fetchStub = vi.fn(async (input: RequestInfo) => {
       const url = String(input);
       if (url.includes("/collections")) {
-        return {
-          ok: true,
-          json: async () => storeResponse,
-        } as Response;
+        return new Response(JSON.stringify(storeResponse), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
       }
-      return {
-        ok: true,
-        json: async () => [],
-      } as Response;
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     });
-
+    const originalFetch = (globalThis as { fetch?: typeof fetch }).fetch;
+    (globalThis as { fetch?: typeof fetch }).fetch = fetchStub as unknown as typeof fetch;
     const runtime = createMcpRuntime({
       store: { baseUrl: "https://store.example", apiKey: "demo" },
-      fetcher,
     });
 
     expect(runtime.store).toBeDefined();
     const collections = await runtime.store!.listCollections();
     expect(collections.items[0]?.id).toBe("col-1");
-    expect(fetcher).toHaveBeenCalledWith(
+    expect(fetchStub).toHaveBeenCalledWith(
       expect.stringContaining("https://store.example/collections"),
       expect.objectContaining({
         headers: expect.any(Headers),
       })
     );
+    (globalThis as { fetch?: typeof fetch }).fetch = originalFetch;
   });
 
   it("omits store client when not configured", () => {
@@ -46,30 +47,30 @@ describe("Runtime store integration", () => {
   });
 
   it("derives store client from remote configuration", async () => {
-    const fetcher = vi.fn(async (input: RequestInfo) => {
+    const fetchStub = vi.fn(async (input: RequestInfo) => {
       const url = String(input);
       if (url.includes("/collections")) {
-        return {
-          ok: true,
-          json: async () => storeResponse,
-        } as Response;
+        return new Response(JSON.stringify(storeResponse), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
       }
-      return {
-        ok: true,
-        json: async () => [],
-      } as Response;
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     });
+    const originalFetch = (globalThis as { fetch?: typeof fetch }).fetch;
+    (globalThis as { fetch?: typeof fetch }).fetch = fetchStub as unknown as typeof fetch;
 
     const runtime = createMcpRuntime({
-      remote: {
-        collectionId: "col-1",
-        store: { baseUrl: "https://store.example", apiKey: "demo" },
-      },
-      fetcher,
+      collectionId: "col-1",
+      store: { baseUrl: "https://store.example", apiKey: "demo" },
     });
 
     expect(runtime.store).toBeDefined();
     const page = await runtime.store!.listCollections();
     expect(page.items[0]?.id).toBe("col-1");
+    (globalThis as { fetch?: typeof fetch }).fetch = originalFetch;
   });
 });

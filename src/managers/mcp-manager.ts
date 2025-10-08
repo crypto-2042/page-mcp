@@ -1,10 +1,11 @@
-import { FetchLike, McpDescriptor, McpSource, RegistryClient, ResolvedDescriptor } from "../types";
+import { FetchLike, McpDescriptor, McpSource, McpStoreClient, ResolvedDescriptor } from "../types";
 
 interface McpManagerOptions {
   fetcher: FetchLike | undefined;
   sourcePreference: McpSource[];
   inlineDescriptors: McpDescriptor[];
-  registryClient?: RegistryClient;
+  mcpId?: string;
+  mcpStoreClient?: McpStoreClient;
   wellKnownPath?: string;
 }
 
@@ -27,17 +28,18 @@ export class McpManager {
     const collected: ResolvedDescriptor[] = [];
     for (const source of this.options.sourcePreference) {
       if (source === "inline") {
-        collected.push(
-          ...this.inline.map<ResolvedDescriptor>((descriptor) => ({ descriptor, source: "inline" }))
-        );
+        appendDescriptors(collected, this.inline, "inline");
       }
       if (source === "wellKnown") {
         const wellKnown = await this.fetchWellKnown();
         collected.push(...wellKnown);
       }
-      if (source === "remote" && this.options.registryClient) {
-        const remote = await this.options.registryClient.discover();
-        collected.push(...remote);
+      if (source === "remote") {
+        if (!this.options.mcpId || !this.options.mcpStoreClient) {
+          continue;
+        }
+        const remoteDescriptors = await this.options.mcpStoreClient.getCollectionDescriptors(this.options.mcpId);
+        appendDescriptors(collected, remoteDescriptors, "remote", `store:${this.options.mcpId}`);
       }
     }
     this.resolved = dedupeDescriptors(collected);
@@ -86,6 +88,17 @@ function dedupeDescriptors(descriptors: ResolvedDescriptor[]): ResolvedDescripto
     }
   }
   return [...map.values()];
+}
+
+function appendDescriptors(
+  target: ResolvedDescriptor[],
+  descriptors: McpDescriptor[],
+  source: McpSource,
+  origin?: string
+): void {
+  for (const descriptor of descriptors) {
+    target.push({ descriptor, source, origin });
+  }
 }
 
 function descriptorKey(descriptor: McpDescriptor): string {

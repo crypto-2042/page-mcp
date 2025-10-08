@@ -1,17 +1,18 @@
-import { CreateMcpRuntimeOptions, McpDescriptor, RemoteRegistryConfig, RemoteStoreConfig, McpRuntime } from "../types";
+import { CreateMcpRuntimeOptions, McpDescriptor, RemoteStoreConfig, McpRuntime, McpSource } from "../types";
 import { createMcpRuntime } from "../runtime";
 
 export interface DomainMapping {
   match: string | RegExp;
-  remote?: RemoteRegistryConfig;
   store?: RemoteStoreConfig;
+  collectionId?: string;
+  sourcePreference?: McpSource[];
   inlineDescriptors?: McpDescriptor[];
 }
 
 export interface BrowserExtensionRuntimeOptions extends CreateMcpRuntimeOptions {
   mappings?: DomainMapping[];
-  defaultRemote?: RemoteRegistryConfig;
   defaultStore?: RemoteStoreConfig;
+  defaultCollectionId?: string;
 }
 
 export function createBrowserExtensionRuntime(options: BrowserExtensionRuntimeOptions = {}): McpRuntime {
@@ -20,8 +21,9 @@ export function createBrowserExtensionRuntime(options: BrowserExtensionRuntimeOp
 
   const merged: CreateMcpRuntimeOptions = {
     ...options,
-    remote: options.remote ?? matching?.remote ?? options.defaultRemote,
     store: options.store ?? matching?.store ?? options.defaultStore,
+    collectionId: options.collectionId ?? matching?.collectionId ?? options.defaultCollectionId,
+    sourcePreference: matching?.sourcePreference ?? options.sourcePreference,
     inlineDescriptors: mergeInlineDescriptors(options.inlineDescriptors, matching?.inlineDescriptors),
   };
 

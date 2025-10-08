@@ -22,9 +22,10 @@ import { createMcpRuntime } from "page-mcp-sdk";
 
 const runtime = createMcpRuntime({
   locale: "zh-CN",
-  remote: {
-    registryUrl: "https://mcp-registry.example.com",
-    publicKey: "BASE64-ED25519-PUBKEY"
+  collectionId: "store-collection-id",
+  store: {
+    baseUrl: "https://mcp-store.example.com/api/",
+    apiKey: "PUBLIC-OR-SIGNED-TOKEN"
   },
   sourcePreference: ["inline", "wellKnown", "remote"]
 });
@@ -135,13 +136,12 @@ const runtime = createBrowserExtensionRuntime({
   mappings: [
     {
       match: /example\.com$/,
-      remote: {
-        collectionId: "store-collection-id",
-        store: { baseUrl: "https://mcp-store.io/api/" }
-      }
+      collectionId: "store-collection-id",
+      store: { baseUrl: "https://mcp-store.io/api/" }
     }
   ],
-  defaultRemote: { wellKnownPath: "/.well-known/mcp.json" }
+  defaultCollectionId: "fallback-collection",
+  defaultStore: { baseUrl: "https://mcp-store.io/api/" }
 });
 
 await runtime.mcp.discover();

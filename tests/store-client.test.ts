@@ -3,10 +3,12 @@ import { RemoteStoreClientImpl } from "../src/remote/store-client";
 import type { RemoteStoreConfig } from "../src/types";
 
 function createFetch(json: unknown) {
-  return vi.fn(async () => ({
-    ok: true,
-    json: async () => json,
-  }) as Response);
+  return vi.fn(async () =>
+    new Response(JSON.stringify(json), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })
+  );
 }
 
 describe("RemoteStoreClientImpl", () => {
@@ -39,7 +41,7 @@ describe("RemoteStoreClientImpl", () => {
     const headers = init?.headers;
     if (headers instanceof Headers) {
       expect(headers.get("Authorization")).toBe("Bearer test-key");
-    } else {
+    } else if (headers) {
       expect((headers as Record<string, string>).Authorization).toBe("Bearer test-key");
     }
     expect(page.items).toHaveLength(2);

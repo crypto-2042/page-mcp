@@ -79,23 +79,15 @@ export interface CreateMcpRuntimeOptions {
   locale?: string;
   sourcePreference?: McpSource[];
   inlineDescriptors?: McpDescriptor[];
-  remote?: RemoteRegistryConfig;
   store?: RemoteStoreConfig;
   fetcher?: FetchLike;
   consentProvider?: ConsentProvider;
   resourceResolvers?: ResourceResolver[];
+  collectionId?: string;
+  wellKnownPath?: string;
   toolSandbox?: ToolSandbox;
   auditSink?: AuditSink;
   clock?: Clock;
-}
-
-export interface RemoteRegistryConfig {
-  registryUrl?: string;
-  publicKey?: string;
-  wellKnownPath?: string;
-  verifySignatures?: boolean;
-  collectionId?: string;
-  store?: RemoteStoreConfig;
 }
 
 export interface RemoteStoreConfig {
@@ -225,10 +217,6 @@ export interface Clock {
   now(): Date;
 }
 
-export interface RegistryClient {
-  discover(): Promise<ResolvedDescriptor[]>;
-}
-
 export interface McpStoreClient {
   listCollections(query?: CollectionQuery): Promise<CollectionPage<McpCollectionSummary>>;
   getCollectionOverview(collectionId: string): Promise<McpCollectionOverview>;
@@ -269,24 +257,15 @@ export interface McpCollectionOverview {
   publisher: string;
   bannerUrl?: string;
   siteUrl?: string;
-  resources: CollectionResourceSummary[];
-  tools: CollectionToolSummary[];
+  resources: CollectionSumary[];
+  tools: CollectionSumary[];
+  prompts: CollectionSumary[];
   tags?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
 
-export interface CollectionResourceSummary {
-  uri: string;
+export interface CollectionSumary {
   name: string;
   description?: string;
-  mimeType?: string;
-}
-
-export interface CollectionToolSummary {
-  name: string;
-  description?: string;
-  sideEffects?: "none" | "local" | "network";
-  inputType?: string;
-  outputType?: string;
 }

@@ -1,16 +1,45 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { createBrowserExtensionRuntime } from "../src";
 import type { BrowserExtensionRuntimeOptions } from "../src";
 
-vi.stubGlobal("location", { hostname: "docs.example.com" });
+const originalLocation = (globalThis as { location?: Location }).location;
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, "location", {
+    value: { hostname: "docs.example.com" },
+    configurable: true,
+    writable: true,
+  });
+});
+
+afterAll(() => {
+  if (originalLocation) {
+    Object.defineProperty(globalThis, "location", {
+      value: originalLocation,
+      configurable: true,
+      writable: true,
+    });
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete (globalThis as { location?: unknown }).location;
+  }
+});
 
 describe("createBrowserExtensionRuntime", () => {
   it("uses mapping that matches hostname", () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify({ items: [], page: 1, pageSize: 10, hasMore: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
     const options: BrowserExtensionRuntimeOptions = {
+      fetcher,
       mappings: [
         {
           match: /example\.com$/,
-          remote: { collectionId: "col-docs", store: { baseUrl: "https://store.example" } },
+          collectionId: "col-docs",
+          store: { baseUrl: "https://store.example" },
         },
       ],
     };
@@ -19,9 +48,17 @@ describe("createBrowserExtensionRuntime", () => {
   });
 
   it("falls back to defaults when no mapping", () => {
+    const fetcher = vi.fn(async () =>
+      new Response(JSON.stringify({ items: [], page: 1, pageSize: 10, hasMore: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
     const runtime = createBrowserExtensionRuntime({
       mappings: [],
-      defaultRemote: { collectionId: "fallback", store: { baseUrl: "https://store.example" } },
+      defaultCollectionId: "fallback",
+      defaultStore: { baseUrl: "https://store.example" },
+      fetcher,
     });
     expect(runtime.store).toBeDefined();
     expect(runtime.mcp).toBeDefined();
